@@ -1,0 +1,130 @@
+---
+title: "Visualising COVID-19"
+output:
+  word_document: default
+  html_notebook: default
+  pdf_document: default
+---
+
+This Project will visualise the spread of COVID-19 in the early months of 2020 and is inspired by the DataCamp Visualizing COVID-19 by Richie Cotton.
+
+First we will look into the confirmed covid cases found around the world in confirmed_cases_worldwide.csv data set.
+
+```{r}
+#load the relevant packages
+library(readr)
+library(ggplot2)
+library(dplyr)
+
+# Read datasets/confirmed_cases_worldwide.csv into confirmed_cases
+confirmed_cases <- read_csv("Downloads/Visualizing COVID-19/datasets/confirmed_cases_worldwide.csv")
+
+# Print out confirmed_cases
+confirmed_cases
+```
+The confirmed cases worldwide can be represented in a line plot below by visualising the cases against the date beginning in 22th January 2020. 
+
+```{r}
+# Draw a line plot of cumulative cases over each date
+
+# Label the y-axis
+ggplot(confirmed_cases, aes(date, cum_cases)) +
+  geom_line() +
+  xlab("Date") +
+  ylab("Cumulative Cases Confirmed") 
+```
+We can see a steep incline beginning towards the end of March with figures reaching almost 2000,000. We can also see a sharp increase around February 15th before returning to a steady incline that's interesting. However it is interesting to focus on Chinas experience and compare to worldwide figures. 
+
+```{r}
+# Read in datasets/confirmed_cases_china_vs_world.csv
+confirmed_cases_with_china <- read_csv("Downloads/Visualizing COVID-19/datasets/confirmed_cases_china_vs_world.csv")
+
+# See the result
+print(glimpse(confirmed_cases_with_china))
+
+# Draw a line plot of cumulative cases vs. date, grouped and colored by is_china
+
+# Define aesthetics within the line geom
+plt_cum_china_vs_world <- ggplot(confirmed_cases_with_china) +
+  geom_line(aes(date, cum_cases, group = is_china, color = is_china)) +
+  xlab("Date") +
+  ylab("Cumulative Cases Confirmed")
+
+# See the plot
+plt_cum_china_vs_world
+```
+We can see that China contained a great volume of the casesIn February, the majority of cases were in China. To understand the significance of the time we will enter the landmark dates that indicate the escalation of COVID into a pandemic.
+
+With the World Health Organisation declaring a global emergency on 30th January 2020. We have China reporting a change in the number of cases on the 13th February 2020 and then a pandemic declared on the 11th March 2020.
+
+```{r}
+#add the event dates and the name of the event into the plot
+events <- tribble(
+  ~ date, ~ event,
+  "2020-01-30", "Global health\nemergency declared",
+  "2020-03-11", "Pandemic\ndeclared",
+  "2020-02-13", "China reporting\nchange"
+) %>%
+  mutate(date = as.Date(date))
+
+# Using events, add vertical dashed lines with an xintercept at date
+# and text at date, labeled by event, and at 100000 on the y-axis
+plt_cum_china_vs_world +
+  geom_vline(aes(xintercept = date), data = events, linetype = "dashed") +
+  geom_text(aes( x=date, label = event), data = events, y = 1e5)
+```
+A logarithmic scale will be introduced on the y axis to explore the changes in number of cases expected in the future as shown below with a trend line. We can use the trend line to predict how the number of cases worldwide, other than China, will change in the future. 
+
+```{r}
+# Modify the plot to use a logarithmic scale on the y-axis
+
+# Filter confirmed_cases_with_china for not China
+no_china <- confirmed_cases_with_china %>%
+  filter(is_china == "Not China")
+
+# Using not_china, draw a line plot cum_cases vs. date
+
+# Add a smooth trend line using linear regression, no error bars
+plt_worldwide_log_trend<- ggplot(no_china, aes(date, cum_cases)) +
+  geom_line() +
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Date") +
+  ylab("Cumulative Cases Confirmed") +
+  scale_y_log10()
+
+plt_worldwide_log_trend
+```
+We can see that the trend line is a good fit but indicates a increasing trend line and predict a future increase in cases worldwide.
+
+We will now explore the top seven countries worst effected by COVID-19.
+
+```{r}
+# read the data set for each country
+confirmed_cases_by_country <- read_csv("Downloads/Visualizing COVID-19/datasets/confirmed_cases_by_country.csv")
+
+# Group by country, summarize to calculate total cases, find the top 7
+top_countries_by_cases <- confirmed_cases_by_country %>%
+  group_by(country) %>%
+  summarize(total_cases = max(cum_cases)) %>%
+top_n(7, total_cases)
+
+# See the result
+top_countries_by_cases
+```
+We can visualise the change in the number of cases for the countries that have been effected the most.
+
+```{r}
+# Read in the dataset from datasets/confirmed_cases_top7_outside_china.csv
+top7_countries_outside_china <- read_csv("Downloads/Visualizing COVID-19/datasets/confirmed_cases_top7_outside_china.csv")
+
+# Glimpse the contents of confirmed_cases_top7_outside_china
+glimpse(top7_countries_outside_china)
+
+# Using confirmed_cases_top7_outside_china, draw a line plot of
+# cum_cases vs. date, grouped and colored by country
+ggplot(top7_countries_outside_china, aes(date, cum_cases, color = country, group = country)) +
+  geom_line() +
+  xlab("Date")
+  ylab("Cumulative Cases Confirmed")
+```
+We can see that Italy was the country that was the most seriously effected by the virus aside from China by around 15,000 cases.
